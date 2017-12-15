@@ -1,0 +1,19 @@
+{
+    "name": "xiaoyi/ali",
+    "description": "ali message service",
+    "require": {
+        "predis/predis": "^1.1"
+    },
+    "authors": [
+        {
+            "name": "禁锢之翼",
+            "email": "mednovahw@163.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Xiaoyi\\Ali\\": "src/",
+            "Aliyun\\":"src/lib"
+        }
+    }
+}
