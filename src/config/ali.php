@@ -6,5 +6,8 @@
  * Time: 10:26
  */
 return [
-    'options' => []
+    'accessKeyId' => '',//appid
+    'accessKeySecret' => '',//密钥
+    'SignName' => '',//短信签名
+    'rdsPrefix' => '',//存放验证码rds前缀
 ];

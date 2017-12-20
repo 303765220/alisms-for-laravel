@@ -6,32 +6,36 @@
  * Time: 12:53
  */
 namespace Xiaoyi\Ali;
+
 use Aliyun\Core\Config;
 use Aliyun\Core\Profile\DefaultProfile;
 use Aliyun\Core\DefaultAcsClient;
 use Aliyun\Api\Sms\Request\V20170525\SendSmsRequest;
 use Illuminate\Support\Facades\Redis;
-
+use Illuminate\Config\Repository;
 // 加载区域结点配置
 Config::load();
 
 class Alisms{
 
+    protected $config;
     static $acsClient = null;
 
+    public function __construct(Repository $config){
+        $this->config = $config;
+    }
     /**
      * 取得AcsClient
      *
      * @return DefaultAcsClient
      */
-    public static function getAcsClient() {
+    public function getAcsClient() {
         //产品名称:云通信流量服务API产品,开发者无需替换
         $product = "Dysmsapi";
         //产品域名,开发者无需替换
         $domain = "dysmsapi.aliyuncs.com";
-        // TODO 此处需要替换成开发者自己的AK (https://ak-console.aliyun.com/)
-        $accessKeyId = "LTAIrqtsJKSEyD6y"; // AccessKeyId
-        $accessKeySecret = "0tN6Io5jn0DjZd7kVBwTkF4EjPX33k"; // AccessKeySecret
+        $accessKeyId = $this->config->get('ali.accessKeyId'); // AccessKeyId
+        $accessKeySecret = $this->config->get('ali.accessKeySecret'); // AccessKeySecret
         // 暂时不支持多Region
         $region = "cn-hangzhou";
         // 服务结点
@@ -52,19 +56,27 @@ class Alisms{
      * 发送短信
      * @return stdClass
      */
-    public static function send($phone,$template,$data) {
+    public function send($phone,$template,$data,$sign = '') {
         // 初始化SendSmsRequest实例用于设置发送短信的参数
         $request = new SendSmsRequest();
         // 必填，设置短信接收号码
         $request->setPhoneNumbers($phone);
         // 必填，设置签名名称，应严格按"签名名称"填写，请参考: https://dysms.console.aliyun.com/dysms.htm#/develop/sign
-        $request->setSignName("百米贩科技");
+        $request->setSignName(
+            $sign == '' ? $this->config->get('ali.SignName') : $sign
+        );
         // 必填，设置模板CODE，应严格按"模板CODE"填写, 请参考: https://dysms.console.aliyun.com/dysms.htm#/develop/template
         $request->setTemplateCode($template);
         // 可选，设置模板参数, 假如模板中存在变量需要替换则为必填项
         $request->setTemplateParam(json_encode($data));
-        $acsResponse = static::getAcsClient()->getAcsResponse($request);
-        return $acsResponse;
+        $acsResponse = $this->getAcsClient()->getAcsResponse($request);
+
+        $result = json_decode(json_encode($acsResponse), true);
+        if($result['Code'] == 'OK'){
+            return 'OK';
+        }else{
+            return $result['Message'];
+        }
     }
 
 
@@ -73,16 +85,17 @@ class Alisms{
      * @param $phone
      * @param $type 1注册2登录3找回密码
      */
-    public static function check($phone,$type,$code){
+    public function validation($phone,$type,$code){
+        $rdsPrefix = $this->config->get('ali.rdsPrefix');
         switch ($type){
             case 1:
-                $redisKey = 'sjs:reg:'.$phone;
+                $redisKey = $rdsPrefix.':reg:'.$phone;
                 break;
             case 2:
-                $redisKey = 'sjs:login:'.$phone;
+                $redisKey = $rdsPrefix.':login:'.$phone;
                 break;
             case 3:
-                $redisKey = 'sjs:password:'.$phone;
+                $redisKey = $rdsPrefix.':password:'.$phone;
                 break;
         }
         if(Redis::exists($redisKey)){//存在
